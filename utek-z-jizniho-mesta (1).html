@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Útěk z Jižního Města 3D</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#000;color:#eee;font:15px system-ui,sans-serif;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#f{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none}
+#t{position:fixed;top:8px;left:10px;font-size:18px;font-weight:700;text-shadow:0 1px 4px #000}
+#i{position:fixed;top:8px;right:10px;text-align:right;max-width:55%;font-size:13px;text-shadow:0 1px 4px #000}
+#p{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(transparent,#000d 25%);padding:30px 12px 10px}
+#l{max-height:13vh;overflow:auto;margin-bottom:8px;line-height:1.35}#l p{margin:3px 0}#l .s{color:#8cf}
+.g{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;align-items:center}.g i{font-style:normal;opacity:.6;width:62px;font-size:12px}
+button{background:#223;color:#fff;border:1px solid #58a;border-radius:6px;padding:6px 10px;font:inherit;cursor:pointer}
+button:hover{background:#357}button.x{border-color:#fa4}button.n{border-color:#6c6}button.w{border-color:#c8f}
+#m{position:fixed;inset:0;display:none;place-items:center;font-size:7vw;font-weight:800;pointer-events:none;text-shadow:0 0 20px #000}
+.tg{position:fixed;transform:translate(-50%,-100%);font-size:12px;background:#000a;padding:2px 6px;border-radius:4px;pointer-events:none;white-space:nowrap;border:1px solid #0000}.tg.on{border-color:#fd4;background:#531d;font-weight:700;font-size:14px}
+#h{position:fixed;top:34px;left:10px;font-size:12px;opacity:.75;text-shadow:0 1px 3px #000}
+</style></head><body>
+<canvas id="c"></canvas><div id="f"></div><div id="t"></div><div id="i"></div><div id="h">←↑↓→ / WASD pohyb · E akce · 1–3 odpovědi v rozhovoru</div><div id="m"></div>
+<div id="p"><div id="l"></div><div id="b"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+// ---------- data (převzato z Java hry) ----------
+const I={usb:['USB flashdisk',0x3a7bd5],money:['peníze na kávu'],coffee:['káva'],crowbar:['páčidlo',0xd04030],shoes:['boty (přezutí)'],chip0:['přístupový čip (neaktivní)'],chip1:['přístupový čip (aktivovaný)']};
+const R={
+B:{n:'Učebna JM357B',d:'Nacházíš se ve startovní místnosti – učebně, ve které jsi při hodině usnul. Lavice jsou prázdné, za okny je tma a v celé budově je ticho.',fc:0x8a7a62,wc:0xc9c2b0,w:10,l:9,g:[3,2],f:[[4,2,.1,0,-4.4,0xeeeeee]],e:[['A','JM357A']]},
+A:{n:'Učebna JM357A',d:'Propojená učebna. Na tabuli zůstal nedokončený příklad a u katedry se válí hromada neopravených semestrálních prací.',fc:0x7a6a55,wc:0xbfc7c0,w:10,l:9,g:[2,2],f:[[4,2,.1,0,-4.4,0x234a34],[3,1,1,0,-3,0x6b4a2b],[1,.5,.8,2.5,-3,0xf4f1e8]],i:['mandik'],e:[['B','JM357B'],['U','chodba']]},
+U:{n:'Chodba (3. patro)',d:'Stojíš na dlouhé chodbě 3. patra. Svítí tu jen nouzová světla a nic tu neleží.',fc:0x55504a,wc:0x9a7a7a,w:6,l:16,lc:0xff5544,f:[[.2,2.2,1.2,-2.9,-4,0x5a4a3a],[.2,2.2,1.2,2.9,-1,0x5a4a3a],[.2,2.2,1.2,-2.9,2,0x5a4a3a],[.2,2.2,1.2,2.9,5,0x5a4a3a]],e:[['A','JM357A'],['T','WC (3. patro)'],['O','kabinet vyučujícího'],['C','schodiště 2 (dolů do 2. patra)']]},
+T:{n:'WC (3. patro)',d:'Vykachlíkované toalety, ve kterých to zvláštně voní po čističi. Někde kape kohoutek a odpočítává vteřiny.',fc:0x9fb5b8,wc:0xd8e6e8,w:8,l:8,f:[[1.4,2.2,.1,-2.5,-3.6,0x88a],[1.4,2.2,.1,0,-3.6,0x88a],[1.4,2.2,.1,2.5,-3.6,0x88a],[3,.9,.6,-2,2.5,0xffffff]],e:[['U','chodba']]},
+O:{n:'Kabinet vyučujícího',d:'Vcházíš do kabinetu. Kolem stolu sedí sbor vyučujících a popíjejí kávu.',fc:0x6b5036,wc:0x8c7556,w:9,l:8,f:[[4,.9,2,0,-1,0x4a3020]],x:[[0x333333,-2,-1],[0x553333,2,-1],[0x335533,0,-2.8]],e:[]},
+C:{n:'Chodba 2 (2. patro)',d:'Úzká chodba druhého patra. U zdi stojí odřená pohovka a vedle ní bzučí automat na kávu.',fc:0x6d6a60,wc:0xb4b0a0,w:9,l:10,f:[[3,.8,1.2,-2,-3.5,0x8b3a3a],[3,.5,.4,-2,-4.2,0x8b3a3a],[1.3,2.3,1,2.5,-4,0x2a4a8a],[.9,.8,.05,2.5,-3.45,0x66ddff]],i:['student','automat'],e:[['U','schodiště (nahoru do 3. patra)'],['J','chodba do 2. části']]},
+J:{n:'Chodba do 2. části (2. patro)',d:'Dlouhá chodba, která spojuje obě části budovy. Zářivky nad hlavou blikají.',fc:0x5e5e58,wc:0xa8b0a8,w:6,l:16,flick:1,f:[[.7,.8,.7,2,-1,0x2266aa]],i:['skolnik'],e:[['C','chodba 2'],['D','chodba 3']]},
+D:{n:'Chodba 3 (2. patro)',d:'Druhá část chodby ve 2. patře. Odtud vedou schody do přízemí a dveře na studijní oddělení.',fc:0x66645a,wc:0xb4b0a0,w:9,l:10,f:[[1.6,2.3,.2,-3,-4.9,0x5a4a3a],[3,.3,2,2.5,-3,0x888888],[3,.3,2,2.5,-1.5,0x777777],[3,.3,2,2.5,0,0x666666]],e:[['J','chodba do 2. části'],['E','schodiště 3 (dolů do 1. patra)'],['S','studijní oddělení']]},
+S:{n:'Studijní oddělení',d:'Kancelář plná šanonů a razítek. Za přepážkou sedí referentky.',fc:0x7b6d58,wc:0xd2cbb8,w:9,l:8,f:[[8,1.1,.8,0,-.5,0x7a5b3a],[8,3,.6,0,-3.6,0x4a5a6a]],i:['jana','hana'],e:[['D','chodba 3']]},
+E:{n:'Chodba 4 (přízemí)',d:'Chodba v přízemí. Na jejím konci jsou hlavní dveře ven a vedle nich čtečka přístupových čipů.',fc:0x59574f,wc:0xb4b0a0,w:8,l:12,f:[[3,3.2,.2,0,-5.9,0x4b3524],[.35,.5,.1,2.3,-5.9,0xdd3333]],i:['dvere'],e:[['D','schodiště 4 (nahoru do 2. patra)'],['M','JM104']]},
+M:{n:'Přednášková místnost JM104',d:'Prostorná přednáškovna se stupňovitými lavicemi. Na plátně svítí nedokončený SQL dotaz.',fc:0x4a4a52,wc:0x9aa0aa,w:11,l:10,f:[[6,3,.1,0,-4.9,0x10161c],[2,1,.8,0,-3.2,0x6b4a2b],[10,.3,1.6,0,0,0x555560],[10,.6,1.6,0,2,0x606068]],i:['chlapek'],e:[['E','chodba 4']]}};
+// ---------- stav ----------
+let S,conv,over,sc,cam,rr,tA=0;
+const has=x=>S.inv.includes(x),fl=x=>S.fl.includes(x),setf=x=>fl(x)||S.fl.push(x);
+const del=x=>S.inv.splice(S.inv.indexOf(x),1);
+function say(t,c){const p=document.createElement('p');p.textContent=t;if(c)p.className=c;$('l').append(p);$('l').scrollTop=1e9}
+function start(){lastLoc=0;S={loc:'B',inv:['shoes'],fl:[],it:{B:['usb'],T:[]}};conv=over=0;$('l').innerHTML='';$('m').style.display='none';
+ say('Probudil ses v učebně JM357B. Při hodině jsi na chvilku zavřel oči, jenže z té chvilky se stal šlofík přes zavírací dobu. Škola je prázdná a potmě. Musíš se dostat ven z labyrintu budovy Jižního Města dřív, než dorazí studenti ranních cvičení. Pak už se přes hordy lidí ven nedostaneš. Profesoři ti to ale ulehčovat nebudou...','s');look();build();ui()}
+function look(){const r=R[S.loc];say('== '+r.n+' ==\n'+r.d,'s');if(fl('bos'))say('Studená podlaha ti nepříjemně studí bosé nohy.')}
+function lose(t){say(t);say('=== KONEC HRY – PROHRA ===','s');end('PROHRA','#f55')}
+function win(t){say(t);if(fl('bos'))say('(Bosé nohy tě studí na chodníku, ale svoboda stojí za to.)');say('=== VÝHRA ===','s');end('VÝHRA!','#6f6');night()}
+function end(t,c){over=1;conv=0;const m=$('m');m.textContent=t;m.style.color=c;m.style.display='grid'}
+function enter(id){
+ if(id=='U'&&!fl('mand'))return say('Ing. Mandík ti zablokoval cestu: „Kam si myslíte, že jdete? Nejdřív mi odevzdejte semestrální práci!“');
+ if(id=='D'&&!fl('jan'))return say('Školník ti blokuje cestu, chce vidět přezutí.');
+ S.loc=id;look();build();
+ if(id=='A'&&fl('cs'))lose('Sotva vkročíš do učebny, Ing. Mandík zvedne hlavu od oprav: „Vy jste mi vypil kávu za moje peníze?! To je zpronevěra peněžních prostředků!“ Chytí tě za rukáv a odvede přímo do kabinetu, kde tě sbor vyučujících zadrží až do rána.');
+ if(id=='O')lose('„Co tady děláte?!“ obořil se na tebe jeden z profesorů. „Za trest tu s námi hezky zůstanete až do rána!“');
+ if(id=='J'&&!fl('jan'))janitor()}
+function ask(p,o,f){say(p);conv={o,f}}
+function pick(i){const o=conv.o[i];say('» '+o);conv.f(i)}
+function janitor(){const P='Na chodbě stojí školník s kyblíkem a svazkem klíčů. Změří si tě přes brýle a zahřmí: „Kolman, kde je přezutí?!“';
+ const f=i=>{if(i==0){if(!has('crowbar')){say('Páčidlo u sebe nemáš. Školník se tváří čím dál podezřívavěji, vyber si jinak.');return ask(P,O,f)}
+  del('crowbar');setf('jan');setf('stun');conv=0;say('Rázně jsi školníka praštil páčidlem. Skácel se k zemi jako pytel brambor. Páčidlo se ti při úderu zlomilo, ale boty máš pořád na nohou a cesta je volná.');build()}
+ else if(i==1){del('shoes');setf('jan');setf('bos');conv=0;say('Potupně sis sundal boty a hodil je školníkovi k nohám. „No vida, a jde to,“ zabručí školník a uvolní ti cestu. Dohraješ bos.');build()}
+ else lose('Školník se zamračí, popadne tě za límec a bez dalších řečí tě odnese do kabinetu vyučujícího. Sbor profesorů tě tam za trest zadrží až do rána.')};
+ const O=['Vytáhnout páčidlo a školníka omráčit','Pokorně si sundat boty a zahodit je','Předstírat, že školníka neslyšíš, a jít dál'];ask(P,O,f)}
+function sql(){const O=['SELECT jmeno WHERE vek > 20 FROM student;','SELECT jmeno FROM student WHERE vek > 20;','SELECT * FROM student ORDER BY vek > 20;'];
+ const P='Ing. Chlapek, Ph.D. na tebe přísně pohlédne: „Když už tu jste, pane kolego – jaký je správný SQL dotaz, který vypíše jména všech studentů starších 20 let z tabulky STUDENT?“';
+ const f=i=>{if(i==1){S.inv.push('chip0');conv=0;say('„Správně,“ pokývá Chlapek hlavou a podá ti přístupový čip od hlavních dveří. „Aby fungoval, musíte ho nechat aktivovat na studijním oddělení ve 2. patře. A buďte tam slušný.“')}
+  else{say(i?'„To vypíše všechny studenty a všechny sloupce. Zkuste to znovu.“':'„To není ani syntakticky správně. Zkuste to znovu.“');ask(P,O,f)}};ask(P,O,f)}
+function polite(){let k=0,pts=0;const Q=[
+['Jana Hudečková zvedne hlavu od monitoru: „Dobrý večer. Čím mohu posloužit?“',[['Čau, potřebuju aktivovat čip, tak rychle.',1,'Jana ti věnuje dlouhý pohled.'],['Dobrý večer, prosím vás, mohla byste mi aktivovat tenhle čip?',3,'Jana se mírně usměje.'],['Dobrý večer, mám tu čip, aktivujte ho.',2,'Jana zvedne obočí.']]],
+['„A proč jste tu tak pozdě? Úřední hodiny už dávno skončily.“',[['To vás nemusí zajímat, mám spěch.',1,'Jana našpulí rty.'],['Zaspal jsem. Stává se.',2,'Jana jen povzdechne.'],['Omlouvám se, usnul jsem na přednášce a snažím se dostat domů.',3,'Jana pokývá hlavou, že chápe.']]],
+['„Máte vyplněný formulář o aktivaci?“',[['Formulář nemám, ale rád ho vyplním, pokud mi ho podáte.',3,'Jana ti ochotně podává papír.'],['Jaký formulář? Tohle je zbytečná byrokracie.',1,'Za přepážkou to zavrčí.'],['Formulář nemám, nešlo by to bez něj?',2,'Jana pokrčí rameny.']]],
+['„Tak a ještě poslední věc. Co říkáte na naši školu?“',[['Je tu hezká katastrofa.',1,'Hana Judečková si nahlas odfrkne.'],['Je to tu v pohodě, jen těžko se odsud dostává ven.',2,'Jana se pousměje.'],['Škola je skvělá a vy na studijním pracujete obdivuhodně.',3,'Jana se začervená.']]]];
+ const show=()=>ask(Q[k][0],Q[k][1].map(o=>o[0]),f);
+ const f=i=>{const o=Q[k][1][i];pts+=o[1];say(o[2]);if(++k<4)return show();
+  if(pts>=9){del('chip0');S.inv.push('chip1');conv=0;say('Jana Hudečková přiloží čip ke čtečce, ozve se pípnutí. „Hotovo. Čip je aktivovaný, hezký večer.“ Teď už stačí dojít k hlavním dveřím v přízemí.')}
+  else lose('Referentky si vyměnily významný pohled. „Takhle se tady s lidmi nemluví. Neslušně vychovaný student nám tu nemá co dělat.“ Než se naděješ, stojíš v kabinetu vyučujícího a sbor profesorů ti oznámí, že tu zůstaneš až do rána.')};show()}
+// postavy a věci: n=jméno, p=věc v prostředí, t=rozhovor, a=přijímá předměty, u=použití
+const N={
+mandik:{n:'Ing. Mandík',t(){say(!fl('mand')?'Ing. Mandík ti zablokoval cestu: „Kam si myslíte, že jdete? Nejdřív mi odevzdejte semestrální práci!“':fl('cm')?'Mandík upíjí kávu: „Výborná. A teď mě nechte, ještě mám co opravovat.“':'Mandík netrpělivě zvedne obočí: „Tak co, kde mám tu kávu? Automat je dole ve 2. patře.“')},a:['usb','coffee'],
+ u(x){del(x);if(x=='usb'){S.inv.push('money');setf('mand');say('Odevzdal jsi USB flashdisk Ing. Mandíkovi. „Výborně,“ říká Mandík. „Tady máte peníze, skočte mi do automatu pro kávu.“ Cesta na chodbu je nyní volná. Flashdisk zmizel z inventáře.')}
+  else{setf('cm');say('Mandík si kávu vezme a spokojeně ji usrkne: „Děkuji, to jste hodný.“ Žádnou odměnu ti za ni ale nedá. Ten, kdo ví, kde je páčidlo, bude asi někdo jiný...')}}},
+student:{n:'spící student',t(){say(fl('cs')?'Student se na chvilku zvedne z gauče: „Páčidlo je na záchodech ve 3. patře. A hlavně nechoď za Mandíkem...“ Pak zase zachrápe.':'Student spí na gauči a něco mumlá. Z jeho blábolení rozeznáš jen slovo „káva“.')},a:['coffee'],
+ u(x){del(x);setf('cs');S.it.T.push('crowbar');say('Student se probudí, vděčně vypije kávu a zamumlá: „Na záchodech ve 3. patře najdeš páčidlo. Na školníka jako dělané. Jenom se nevracej k Mandíkovi, kávu měl dostat on...“ A znovu usne. (Do JM357A se už radši nevracej.)')}},
+automat:{n:'automat na kávu',p:1,a:['money'],t(){say('Automat bzučí a čeká na mince.')},u(x){del(x);S.inv.push('coffee');say('Vhodil jsi mince do automatu. Automat zabzučel, zachrčel a vyplivl horký kelímek kávy. Peníze zmizely, káva je tvoje.')}},
+skolnik:{n:'školník',t(){fl('jan')?say(fl('stun')?'Školník leží na zemi a tiše chrápe. Radši ho nebudit.':'Školník si tvé boty zkoumavě prohlíží: „No vida. Příště přezuj hned.“'):janitor()}},
+jana:{n:'Jana Hudečková',t(){has('chip1')?say('Jana Hudečková se usměje: „Čip už máte aktivní, tak ať vám slouží. Hezký večer.“'):!has('chip0')?say('Jana Hudečková: „Bez čipu k aktivaci tu nemáte co dělat. Zkuste to v přednáškové místnosti v přízemí.“'):polite()}},
+hana:{n:'Hana Judečková',t(){say('Hana Judečková ani nezvedne oči od papírů: „Nemám čas, neotravujte mě. Obraťte se na kolegyni.“')}},
+chlapek:{n:'Ing. Chlapek',t(){has('chip0')||has('chip1')?say('Chlapek na tebe ani nevzhlédne: „Čip už máte. Aktivovat ho půjdete na studijní oddělení do 2. patra.“'):sql()}},
+dvere:{n:'hlavní dveře',p:1,a:['chip1','crowbar'],t(){say('Dveře jsou zamčené a čtečka vedle nich nesvítí. Potřebuješ aktivovaný přístupový čip (nebo něco, čím by se dveře daly vypáčit).')},u(x){x=='crowbar'?(del(x),win('Zapřel ses páčidlem do spáry mezi dveřmi a rámem. Zámek zapraskal a dveře povolily. Vyjdeš ven do chladného večera dřív, než dorazili studenti ranních cvičení, a spokojeně míříš domů.')):win('Přiložil jsi aktivovaný čip ke čtečce. Zámek cvakne, dveře se otevřou a ty vyjdeš do chladného večera. Zvládl jsi to dřív, než dorazili studenti ranních cvičení, a spokojeně míříš domů.')}}};
+// ---------- UI ----------
+function ui(){const b=$('b');b.innerHTML='';const r=R[S.loc];
+ $('t').textContent=r.n;$('i').textContent='Inventář: '+(S.inv.length?S.inv.map(x=>I[x][0]).join(', '):'prázdný');
+ const row=(h,c)=>{const d=document.createElement('div');d.className='g';d.innerHTML='<i>'+h+'</i>';b.append(d);return(t,f)=>{const e=document.createElement('button');e.textContent=t;e.className=c;e.onclick=()=>{f();ui()};d.append(e)}};
+ if(over){row('','x')('Hrát znovu',start);return}
+ if(conv){const a=row('Odpověď','w');conv.o.forEach((o,i)=>a((i+1)+') '+o,()=>pick(i)));return}
+ let a=row('Jít','');r.e.forEach(([id,l])=>a(l,()=>enter(id)));
+ const its=S.it[S.loc]||[];if(its.length){a=row('Sebrat','n');its.forEach(x=>a(I[x][0],()=>{its.splice(its.indexOf(x),1);S.inv.push(x);say('Sebral jsi: '+I[x][0]+'.');build()}))}
+ const io=r.i||[];const tk=io.filter(k=>!N[k].p);if(tk.length){a=row('Mluvit','w');tk.forEach(k=>a(N[k].n,N[k].t))}
+ const us=[];S.inv.forEach(x=>io.forEach(k=>N[k].a&&N[k].a.includes(x)&&us.push([x,k])));
+ if(us.length){a=row('Použít','x');us.forEach(([x,k])=>a(I[x][0]+' → '+N[k].n,()=>{N[k].u(x);build()}))}
+ if(io.includes('dvere')){a=row('Dveře','x');a('Zkusit odejít z budovy',()=>has('chip1')?win('Přiložil jsi aktivovaný čip ke čtečce. Zámek cvakne, dveře se otevřou a ty vyjdeš do chladného večera. Zvládl jsi to dřív, než dorazili studenti ranních cvičení, a spokojeně míříš domů.'):say('Dveře jsou zamčené a čtečka vedle nich nesvítí. Potřebuješ aktivovaný přístupový čip (nebo něco, čím by se dveře daly vypáčit).'))}
+ a=row('Hra','');a('Uložit',()=>{try{localStorage.jm=JSON.stringify(S);say('Hra uložena.')}catch(e){say('Uložení se nepodařilo.')}});
+ a('Načíst',()=>{try{S=JSON.parse(localStorage.jm);say('Hra načtena.');look();build()}catch(e){say('Nic uloženo.')}})}
+// ---------- 3D ----------
+const rend=new THREE.WebGLRenderer({canvas:$('c'),antialias:true});rend.setPixelRatio(Math.min(devicePixelRatio,2));
+cam=new THREE.PerspectiveCamera(50,1,.1,100);
+function rs(){rend.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener('resize',rs);rs();
+const M=c=>new THREE.MeshLambertMaterial({color:c});
+function box(g,w,h,d,x,y,z,c){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c));m.position.set(x,y,z);g.add(m);return m}
+function person(c,sk=0xf0c8a0){const g=new THREE.Group();box(g,.6,.9,.35,0,1.15,0,c);box(g,.22,.7,.25,-.15,.35,0,0x333344);box(g,.22,.7,.25,.15,.35,0,0x333344);
+ box(g,.15,.7,.15,-.4,1.1,0,c);box(g,.15,.7,.15,.4,1.1,0,c);const h=new THREE.Mesh(new THREE.SphereGeometry(.23,16,12),M(sk));h.position.y=1.8;g.add(h);return g}
+let flick=null,stars=null;
+function night(){sc.background=new THREE.Color(0x0a1030);const p=[];for(let i=0;i<300;i++)p.push((Math.random()-.5)*60,Math.random()*20+3,-20-Math.random()*20);
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));sc.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffffff,size:.15})))}
+let fig=[],pick3=[],T3=[],PL,lastLoc,V;
+function act(k){const q=N[k],x=q.a&&q.a.find(has);if(x){q.u(x);build()}else q.t()}
+function near(){let b=0,bd=9;T3.forEach(o=>{const d=Math.hypot(o.x-PL.position.x,o.z-PL.position.z);if(d<o.r&&d<bd){bd=d;b=o}});return b}
+function build(){const r=R[S.loc],keep=lastLoc==S.loc,px=PL?PL.position.x:0,pz=PL?PL.position.z:0;lastLoc=S.loc;V=V||new THREE.Vector3();
+ sc=new THREE.Scene();sc.background=new THREE.Color(0x111118);fig=[];pick3=[];T3=[];rr=r;
+ document.querySelectorAll('.tg').forEach(e=>e.remove());
+ if(!keep){const f=$('f');f.style.transition='none';f.style.opacity=1;requestAnimationFrame(()=>{f.style.transition='opacity .6s';f.style.opacity=0})}
+ const w=r.w,l=r.l,g=new THREE.Group();sc.add(g);
+ box(g,w,.2,l,0,-.1,0,r.fc);box(g,w,4,.2,0,2,-l/2,r.wc);box(g,.2,4,l,-w/2,2,0,r.wc);box(g,.2,4,l,w/2,2,0,r.wc);
+ sc.add(new THREE.HemisphereLight(0xffffff,0x444455,.55));
+ flick=new THREE.PointLight(r.lc||0xfff2d8,1.1,40);flick.position.set(0,3.6,0);sc.add(flick);r.fl=!!r.flick;
+ if(r.g)for(let i=0;i<r.g[0];i++)for(let j=0;j<r.g[1];j++){const x=(i-(r.g[0]-1)/2)*2.8,z=-1+j*2.4;box(g,1.6,.8,.8,x,.4,z,0x9c7b4f);box(g,.6,.5,.5,x,.25,z+.9,0x555555)}
+ r.f.forEach(([a,b,c,x,z,col])=>{const m=box(g,a,b,c,x,b/2,z,col);if(col==0x66ddff||col==0xdd3333)m.material=new THREE.MeshBasicMaterial({color:col})});
+ (r.x||[]).forEach(([c,x,z])=>{const p=person(c);p.position.set(x,0,z);sc.add(p);fig.push(p)});
+ const tg=(x,z,y,name,lf,fn,pr)=>{const el=document.createElement('div');el.className='tg';document.body.append(el);T3.push({x,z,y,name,l:lf,fn,r:pr,el})};
+ const n=r.e.length;r.e.forEach(([id,lb],i)=>{const x=(i-(n-1)/2)*Math.min(2.8,(w-1)/n),m=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.06,24),new THREE.MeshBasicMaterial({color:0x44ffcc}));
+  m.position.set(x,.03,l/2-.7);sc.add(m);tg(x,l/2-.7,.8+i%2*.6,lb.split(' (')[0],()=>'Jít: '+lb,()=>enter(id),1.1)});
+ const its=S.it[S.loc]||[];its.forEach((x,i)=>{const ix=1.5+i,m=box(sc,.35,.25,.9,ix,1.3,l/2-5.5,I[x][1]);m.material=new THREE.MeshBasicMaterial({color:I[x][1]});pick3.push(m);
+  tg(ix,l/2-5.5,1.9,I[x][0],()=>'Sebrat: '+I[x][0],()=>{its.splice(its.indexOf(x),1);S.inv.push(x);say('Sebral jsi: '+I[x][0]+'.');build()},1.5)});
+ const pos={mandik:[-1.5,-1.5,0x6a4c93],student:[-2,0,0x3a9a6a],skolnik:[0,0,0x3d6b4f],jana:[-1.8,-1.4,0xc2185b],hana:[1.8,-1.4,0x7b1fa2],chlapek:[0,-2.2,0x455a64]},pp={automat:[2.5,-3.2],dvere:[0,-5.2]};
+ (r.i||[]).forEach(k=>{const q=pos[k];let tx,tz;
+  if(q){const p=person(q[2]);p.position.set(q[0],0,q[1]);if(k=='student'){p.position.set(-2,.55,-3.5);p.rotation.z=1.4}
+   if(k=='skolnik'&&fl('stun')){p.rotation.z=1.5;p.position.y=.25}sc.add(p);fig.push(p);tx=q[0];tz=k=='student'?-2.6:q[1]}else{tx=pp[k][0];tz=pp[k][1]}
+  tg(tx,tz,2.5,N[k].n,()=>{const x=N[k].a&&N[k].a.find(has);return x?(N[k].p?'Použít: ':'Předat: ')+I[x][0]:N[k].p?'Prozkoumat':'Mluvit'},()=>act(k),1.6)});
+ PL=person(0x3b6fd4);PL.position.set(keep?px:0,0,keep?pz:l/2-2.6);if(fl('bos'))PL.children[1].material=PL.children[2].material=M(0xf0c8a0);sc.add(PL);fig.push(PL);
+ cam.userData={d:Math.max(w,l)*.85+3,h:Math.max(3.8,l*.28)}}
+const K={};
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(e.key.startsWith('Arrow')||k==' ')e.preventDefault();
+ if(over){if(e.key=='Enter'){start()}return}
+ if(conv){const i=/^[1-9]$/.test(k)?k-1:'abc'.indexOf(k);if(i>=0&&i<conv.o.length){pick(i);ui()}return}
+ K[e.code]=1;if(e.code=='KeyE'&&!e.repeat){const t=near();if(t){t.fn();ui()}}});
+addEventListener('keyup',e=>delete K[e.code]);
+function loop(t){requestAnimationFrame(loop);if(!sc)return;t/=1000;const dt=Math.min(t-tA,.05);tA=t;const c=cam.userData,P=PL.position;
+ if(!conv&&!over){const dx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0),dz=(K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0);
+  if(dx||dz){const m=Math.hypot(dx,dz)/(4*dt);P.x=Math.max(-rr.w/2+.6,Math.min(rr.w/2-.6,P.x+dx/m));P.z=Math.max(-rr.l/2+.8,Math.min(rr.l/2-.4,P.z+dz/m));PL.rotation.y=Math.atan2(dx,dz)}}
+ cam.position.set(P.x*.5,c.h,c.d*.6+rr.l/2*.7);cam.lookAt(P.x*.5,1.2,-rr.l*.12);
+ fig.forEach((p,i)=>{if(p.rotation.z==0)p.position.y=Math.abs(Math.sin(t*2+i))*.04});
+ pick3.forEach(m=>{m.rotation.y=t*2;m.position.y=1.3+Math.sin(t*3)*.12});
+ if(rr.fl)flick.intensity=Math.random()>.9?.2:1.1;
+ const nr=!conv&&!over?near():0;
+ T3.forEach(o=>{V.set(o.x,o.y,o.z).project(cam);const s=o.el.style;s.display=conv||over||V.z>1?'none':'block';s.left=(V.x+1)/2*innerWidth+'px';s.top=(1-V.y)/2*innerHeight+'px';
+  o.el.className='tg'+(nr==o?' on':'');o.el.textContent=nr==o?'[E] '+o.l():o.name});
+ rend.render(sc,cam)}
+if(window.THREE){start();requestAnimationFrame(loop)}else document.body.insertAdjacentHTML('beforeend','<p style="position:fixed;top:40%;width:100%;text-align:center">Pro 3D grafiku je potřeba připojení k internetu (three.js z CDN).</p>');
+</script></body></html>
