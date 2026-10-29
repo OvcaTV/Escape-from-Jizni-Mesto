@@ -8,7 +8,7 @@ import cz.vse.escape.text.TextNormalizer;
 
 import java.util.Set;
 
-/** Spouštěč hry: po výhře nebo prohře nabídne novou hru. */
+/** Spouštěč hry | Po výhře nebo prohře nabídne novou hru. */
 public final class Main {
 
     private static final Set<String> YES_ANSWERS = Set.of("ano", "a", "y", "yes");
