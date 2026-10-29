@@ -3,31 +3,37 @@
 Textová hra v Javě podle Game Design Documentu. Jsi student VŠE, který usnul při hodině v JM357B
 a musí se dostat z budovy dřív, než dorazí ranní cvičení.
 
-Potřebuješ **JDK 17 nebo novější**, žádné další knihovny.
+Potřebuješ **JDK 17 nebo novější** a **Maven 3.8+** (JUnit 5 se stáhne automaticky jako testovací závislost).
 
-## Spuštění
+## Sestavení a spuštění (Maven)
 
 ```bash
-# přeložení
+mvn package            # přeloží, spustí testy a vytvoří target/jm-escape-1.0.jar
+java -Dfile.encoding=UTF-8 -jar target/jm-escape-1.0.jar
+```
+
+Hru spouštěj z kořene projektu (tam, kde je složka `ascii/`). Ve Windows PowerShellu před spuštěním `chcp 65001`,
+aby se správně zobrazila čeština.
+
+### Bez Mavenu (jen JDK)
+
+```bash
 mkdir -p out
 javac --release 17 -encoding UTF-8 -d out $(find src/main -name "*.java")
-
-# hra
 java -Dfile.encoding=UTF-8 -cp out cz.vse.escape.Main
 ```
 
-Ve Windows PowerShellu místo `$(find ...)` použij:
+Ve Windows PowerShellu místo `$(find ...)`:
 `javac --release 17 -encoding UTF-8 -d out (Get-ChildItem -Recurse src/main -Filter *.java).FullName`
-a před spuštěním `chcp 65001`, aby se správně zobrazila čeština.
 
 ### Testy
 
 ```bash
-javac --release 17 -encoding UTF-8 -d out $(find src -name "*.java")
-java -Dfile.encoding=UTF-8 -cp out cz.vse.escape.WalkthroughTest
+mvn test
 ```
 
-Test odehraje obě výhry, všechny prohry, chybové hlášky a ukládání/načítání.
+`GameScenariosTest` (JUnit 5) odehraje obě výhry, všechny prohry, chybové hlášky, ukládání/načítání včetně poškozeného
+souboru a rozhovory.
 
 ## Ovládání
 
@@ -41,7 +47,7 @@ Test odehraje obě výhry, všechny prohry, chybové hlášky a ukládání/nač
 | `prozkoumej [předmět]` | znovu popíše místnost / popíše předmět |
 | `odejit` | pokus o odchod z budovy hlavními dveřmi |
 | `uloz [soubor]`, `nacti [soubor]` | uložení a načtení hry (výchozí `savegame.properties`) |
-| `napoveda`, `konec` | nápověda, konec |
+| `napoveda`, `konec` | nápověda, konec (`konec` jde zadat i uprostřed rozhovoru) |
 
 V rozhovorech se odpovídá jen písmenem **A / B / C**. Diakritika a velikost písmen nehrají roli.
 
@@ -59,6 +65,8 @@ cz.vse.escape
 ├── save                 SaveGameRepository (ukládání do .properties)
 └── text                 Messages (obecné hlášky), StoryTexts (příběh), TextNormalizer, NameSet, AsciiArt
 
+pom.xml                  Maven (Java 17, JUnit 5)
+src/test                 JUnit testy (GameScenariosTest, ScriptedConsole)
 ascii/                   ASCII portréty postav, jeden soubor na postavu (mandik.txt, chlapek.txt, ...)
 ```
 

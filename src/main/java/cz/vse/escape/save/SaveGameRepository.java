@@ -76,6 +76,9 @@ public final class SaveGameRepository {
             properties.load(reader);
         } catch (NoSuchFileException exception) {
             throw new SaveGameException("Uložená hra nebyla nalezena: " + file);
+        } catch (IllegalArgumentException exception) {
+            // Properties.load takto hlásí poškozený obsah (např. chybný unicode zápis).
+            throw new SaveGameException("Uložená hra je poškozená: " + exception.getMessage(), exception);
         } catch (IOException exception) {
             throw new SaveGameException("Hru se nepodařilo načíst: " + exception.getMessage(), exception);
         }

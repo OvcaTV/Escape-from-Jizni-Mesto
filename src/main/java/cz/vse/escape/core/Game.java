@@ -5,6 +5,7 @@ import cz.vse.escape.dialog.Conversation;
 import cz.vse.escape.item.ItemCatalog;
 import cz.vse.escape.text.AsciiArt;
 import cz.vse.escape.text.StoryTexts;
+import cz.vse.escape.text.TextNormalizer;
 import cz.vse.escape.world.Location;
 import cz.vse.escape.world.World;
 
@@ -17,6 +18,8 @@ import java.util.Optional;
 public final class Game {
 
     private static final String INPUT_PROMPT = "> ";
+    /** Příkaz, který jde zadat i uprostřed rozhovoru (jinak by se z dialogu nedalo odejít). */
+    private static final String QUIT_COMMAND = "konec";
 
     private final GameConsole console;
     private final ItemCatalog itemCatalog;
@@ -57,7 +60,7 @@ public final class Game {
         if (rawInput.isBlank()) {
             return;
         }
-        if (activeConversation != null) {
+        if (activeConversation != null && !QUIT_COMMAND.equals(TextNormalizer.normalize(rawInput))) {
             activeConversation.handleInput(rawInput, this);
         } else {
             commands.execute(rawInput, this);

@@ -6,44 +6,29 @@ import cz.vse.escape.core.GameStatus;
 import cz.vse.escape.item.ItemId;
 import cz.vse.escape.world.LocationId;
 
+import org.junit.jupiter.api.Test;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
- * Scénářové testy celé hry (bez externích knihoven – spouští se přes main).
+ * Scénářové testy celé hry (JUnit 5, spouští se přes {@code mvn test}).
  * Každý scénář odehraje hru skriptovaným vstupem a zkontroluje výsledek a výpisy.
  */
-public final class WalkthroughTest {
-
-    private static int checks;
+final class GameScenariosTest {
 
     // Společný začátek: flashdisk -> Mandík -> chodba 3. patra -> chodba 2 (peníze v inventáři).
     private static final String[] START_TO_CORRIDOR_2 = {
             "seber flashdisk", "jdi jm357a", "pouzij flashdisk mandik", "jdi chodba", "jdi schodiste 2"
     };
 
-    public static void main(String[] args) throws IOException {
-        winWithChipAndShoes();
-        winWithCrowbarThroughDoor();
-        winWithoutDiacriticsAndWithPartialNames();
-        loseInTeachersOffice();
-        loseByIgnoringJanitor();
-        loseByRudenessToClerks();
-        loseByEnteringMandikAfterGivingCoffeeToStudent();
-        crowbarOnJanitorKeepsShoesAndLosesCrowbar();
-        errorMessages();
-        mandikBlocksUntilProjectIsHandedIn();
-        coffeeToMandikGivesNoCrowbar();
-        saveAndLoad();
-        portraitsAreShownWhenTalking();
-        missingPortraitFileIsIgnored();
-        System.out.println("OK – všech " + checks + " kontrol prošlo.");
-    }
-
     // ------------------------------------------------------------------ výhry
 
-    private static void winWithChipAndShoes() {
+    @Test
+    void winWithChipAndShoes() {
         Result result = play(join(START_TO_CORRIDOR_2,
                 "pouzij penize automat",
                 "jdi chodba do 2. casti", "B",            // sundat boty
@@ -60,7 +45,8 @@ public final class WalkthroughTest {
         assertContains(result, "Čip je aktivovaný");
     }
 
-    private static void winWithCrowbarThroughDoor() {
+    @Test
+    void winWithCrowbarThroughDoor() {
         Result result = play(join(START_TO_CORRIDOR_2,
                 "pouzij penize automat",
                 "pouzij kava student",
@@ -74,7 +60,8 @@ public final class WalkthroughTest {
         assertContains(result, "Zapřel ses páčidlem");
     }
 
-    private static void winWithoutDiacriticsAndWithPartialNames() {
+    @Test
+    void winWithoutDiacriticsAndWithPartialNames() {
         Result result = play(join(START_TO_CORRIDOR_2,
                 "POUZIJ Peníze",                            // velká písmena, diakritika, cíl se dovodí
                 "jdi chodba",                               // jednoznačný začátek jména východu
@@ -85,7 +72,8 @@ public final class WalkthroughTest {
 
     // ------------------------------------------------------------------ prohry
 
-    private static void loseInTeachersOffice() {
+    @Test
+    void loseInTeachersOffice() {
         Result result = play("seber flashdisk", "jdi jm357a", "pouzij flashdisk mandik", "jdi chodba",
                 "jdi kabinet vyucujiciho");
         assertStatus(result, GameStatus.LOST);
@@ -93,13 +81,15 @@ public final class WalkthroughTest {
         assertContains(result, "KONEC HRY");
     }
 
-    private static void loseByIgnoringJanitor() {
+    @Test
+    void loseByIgnoringJanitor() {
         Result result = play(join(START_TO_CORRIDOR_2, "jdi chodba do 2. casti", "C"));
         assertStatus(result, GameStatus.LOST);
         assertContains(result, "odnese do kabinetu");
     }
 
-    private static void loseByRudenessToClerks() {
+    @Test
+    void loseByRudenessToClerks() {
         Result result = play(join(START_TO_CORRIDOR_2,
                 "jdi chodba do 2. casti", "B", "jdi chodba 3", "jdi schodiste 3", "jdi jm104",
                 "mluv chlapek", "B", "jdi chodba 4", "jdi schodiste 4", "jdi studijni oddeleni",
@@ -108,7 +98,8 @@ public final class WalkthroughTest {
         assertContains(result, "Neslušně vychovaný student");
     }
 
-    private static void loseByEnteringMandikAfterGivingCoffeeToStudent() {
+    @Test
+    void loseByEnteringMandikAfterGivingCoffeeToStudent() {
         Result result = play(join(START_TO_CORRIDOR_2,
                 "pouzij penize automat", "pouzij kava student",
                 "jdi schodiste", "jdi jm357a"));
@@ -118,7 +109,8 @@ public final class WalkthroughTest {
 
     // ------------------------------------------------------------------ pravidla
 
-    private static void crowbarOnJanitorKeepsShoesAndLosesCrowbar() {
+    @Test
+    void crowbarOnJanitorKeepsShoesAndLosesCrowbar() {
         Result result = playKeepingGame(join(START_TO_CORRIDOR_2,
                 "pouzij penize automat", "pouzij kava student",
                 "jdi schodiste", "jdi wc", "seber pacidlo", "jdi chodba", "jdi schodiste 2",
@@ -130,7 +122,8 @@ public final class WalkthroughTest {
         check(!result.game.getState().getInventory().contains(ItemId.CROWBAR), "páčidlo zmizelo");
     }
 
-    private static void errorMessages() {
+    @Test
+    void errorMessages() {
         Result result = play("tancuj", "jdi nikam", "mluv mandik", "pouzij pacidlo", "seber nic",
                 "pouzij flashdisk", "jdi jm357a", "mluv hana", "jdi chodba", "inventar", "napoveda");
         assertContains(result, "Neznámý příkaz. Zkus zadat 'napoveda'.");
@@ -143,7 +136,8 @@ public final class WalkthroughTest {
         assertContains(result, "U sebe máš: boty (přezutí).");
     }
 
-    private static void mandikBlocksUntilProjectIsHandedIn() {
+    @Test
+    void mandikBlocksUntilProjectIsHandedIn() {
         Result result = playKeepingGame("jdi jm357a", "jdi chodba");
         check(result.game.getState().getCurrentLocation().getId() == LocationId.JM357A,
                 "hráč zůstal u Mandíka");
@@ -152,7 +146,8 @@ public final class WalkthroughTest {
 
     // ------------------------------------------------------------------ ASCII portréty
 
-    private static void portraitsAreShownWhenTalking() throws IOException {
+    @Test
+    void portraitsAreShownWhenTalking() throws IOException {
         // Mandík (první rozhovor) i školník (automatické setkání po vstupu na chodbu) mají svůj obrázek.
         Result mandik = playKeepingGame("jdi jm357a", "mluv mandik");
         assertContains(mandik.transcript, firstLineOf("mandik"));
@@ -165,7 +160,8 @@ public final class WalkthroughTest {
         }
     }
 
-    private static void missingPortraitFileIsIgnored() {
+    @Test
+    void missingPortraitFileIsIgnored() {
         check(cz.vse.escape.text.AsciiArt.find("neexistuje").isEmpty(), "chybějící soubor nevadí");
         check(cz.vse.escape.text.AsciiArt.find("../README").isEmpty(), "cesta mimo složku se odmítne");
     }
@@ -174,7 +170,8 @@ public final class WalkthroughTest {
         return Files.readAllLines(Path.of("ascii", id + ".txt")).get(0);
     }
 
-    private static void coffeeToMandikGivesNoCrowbar() {
+    @Test
+    void coffeeToMandikGivesNoCrowbar() {
         Result result = playKeepingGame(join(START_TO_CORRIDOR_2,
                 "pouzij penize automat",
                 "jdi schodiste", "jdi jm357a", "pouzij kava mandik",
@@ -187,7 +184,8 @@ public final class WalkthroughTest {
 
     // ------------------------------------------------------------------ ukládání
 
-    private static void saveAndLoad() throws IOException {
+    @Test
+    void saveAndLoad() throws IOException {
         String fileName = "test-save.properties";
         Path file = Path.of(fileName);
         try {
@@ -216,6 +214,70 @@ public final class WalkthroughTest {
         } finally {
             Files.deleteIfExists(file);
         }
+    }
+
+    // ------------------------------------------------------------------ odolnost vůči chybám
+
+    @Test
+    void corruptedSaveFileDoesNotCrashTheGame() throws IOException {
+        Path file = Path.of("test-save-corrupted.properties");
+        try {
+            Files.writeString(file, "location=JM357A\\uZZ\n");
+            Result result = playKeepingGame("nacti " + file);
+            assertContains(result.transcript, "Uložená hra je poškozená");
+            check(result.game.getState().getCurrentLocation().getId() == LocationId.JM357B,
+                    "rozehraná hra zůstala nedotčená");
+        } finally {
+            Files.deleteIfExists(file);
+        }
+    }
+
+    @Test
+    void unknownValueInSaveFileIsRejected() throws IOException {
+        Path file = Path.of("test-save-unknown.properties");
+        try {
+            Files.writeString(file, "location=NEEXISTUJE\n");
+            assertContains(playKeepingGame("nacti " + file), "Uložená hra je poškozená");
+        } finally {
+            Files.deleteIfExists(file);
+        }
+    }
+
+    @Test
+    void quitWorksInsideConversation() {
+        Result result = playKeepingGame(join(START_TO_CORRIDOR_2,
+                "jdi chodba do 2. casti", "konec"));
+        assertStatus(result, GameStatus.QUIT);
+    }
+
+    @Test
+    void onlyLettersAreAcceptedInConversation() {
+        Result result = playKeepingGame(join(START_TO_CORRIDOR_2,
+                "jdi chodba do 2. casti", "blabla", "D", "B"));
+        assertContains(result.transcript, "Odpověz prosím písmenem A až C.");
+        check(result.game.getState().hasFlag(cz.vse.escape.core.GameFlag.JANITOR_SOLVED), "školník vyřešen");
+    }
+
+    @Test
+    void crowbarChoiceWithoutCrowbarAsksAgain() {
+        Result result = playKeepingGame(join(START_TO_CORRIDOR_2,
+                "jdi chodba do 2. casti", "A", "B"));
+        assertContains(result.transcript, "Páčidlo u sebe nemáš");
+        check(result.game.getState().hasFlag(cz.vse.escape.core.GameFlag.BAREFOOT), "nakonec bos");
+    }
+
+    @Test
+    void sqlQuizRepeatsUntilCorrectAnswer() {
+        Result result = playKeepingGame(join(START_TO_CORRIDOR_2,
+                "jdi chodba do 2. casti", "B", "jdi chodba 3", "jdi schodiste 3", "jdi jm104",
+                "mluv chlapek", "A", "C", "B"));
+        check(result.game.getState().getInventory().contains(ItemId.INACTIVE_CHIP), "čip získán");
+    }
+
+    @Test
+    void textNormalizerRemovesDiacriticsCaseAndSpaces() {
+        org.junit.jupiter.api.Assertions.assertEquals("studijni oddeleni",
+                cz.vse.escape.text.TextNormalizer.normalize("  Studijní   ODDĚLENÍ "));
     }
 
     // ------------------------------------------------------------------ pomocné metody
@@ -257,9 +319,6 @@ public final class WalkthroughTest {
     }
 
     private static void check(boolean condition, String failureMessage) {
-        checks++;
-        if (!condition) {
-            throw new AssertionError(failureMessage);
-        }
+        assertTrue(condition, failureMessage);
     }
 }
